@@ -353,7 +353,7 @@ void execute()
     fclose(ifile);
 
     // Tell the user what we've done
-    printf("%u packets unpacked from %s\n", packets, fn);
+    printf("%8u packets unpacked from %s\n", packets, fn);
 
     // Tell the OS that all is well
     exit(0);
