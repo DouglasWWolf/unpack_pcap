@@ -24,6 +24,7 @@ PhysMem  RAM;
 FILE*    ifile;
 uint32_t packets = 0;
 uint32_t packet_cycles = 0;
+uint32_t ram_records   = 0;
 
 
 struct 
@@ -132,6 +133,21 @@ void parseCommandLine(const char** argv)
 }
 //=============================================================================
 
+//=============================================================================
+// This goes at the very top of our data in RAM.  The reads this in to 
+// determine whether it's looking at a real PCAP structure, and to determine
+// how to configure itself
+//=============================================================================
+#pragma pack(push, 1)
+struct
+{
+    uint64_t magic;
+    uint32_t ram_records;
+    uint32_t packet_cycles;
+    uint8_t  filler[46];
+} playback_params;
+#pragma pack(push, 1)
+//=============================================================================
 
 //=============================================================================
 // This is the header of a PCAP file
@@ -172,7 +188,7 @@ struct pcap_packet_t
 #pragma pack(push, 1)
 struct ram_header_t
 {
-    uint64_t    magic = 0x3141592653589793;
+    uint64_t    magic = 0xDEADBEEFDEADBEEFULL;
     uint16_t    length;
     uint8_t     filler[54];
 } ram_header;
@@ -226,6 +242,14 @@ void analyze_file()
 void write_packets_to_ram(unsigned char* ptr)
 {
     pcap_packet_t packet;
+
+    // Write a block of playback-parameters into the first block of RAM
+    // The FPGA will fetch this prior to fetching packets
+    playback_params.magic         = 0x3141592653589793ULL;
+    playback_params.ram_records   = ram_records;
+    playback_params.packet_cycles = packet_cycles;
+    memcpy(ptr, &playback_params, sizeof(playback_params));
+    ptr += 4096;
 
     // Spin through the input pcap file, one packet at a time
     while (fread(&packet, 1, sizeof(packet), ifile) == sizeof(packet))
@@ -295,11 +319,19 @@ void execute()
     // Find out how many packets are in the file, and how many data-cycles they require
     analyze_file();
 
+    // Make sure the file isn't empty
+    if (packets == 0)
+    {
+        fprintf(stderr, "empty pcap file: %s\n", fn);
+        exit(1);
+    }
+
     // How many 64-byte records in RAM will this require?
-    uint32_t ram_records = packet_cycles + packets;
+    ram_records = packet_cycles + packets;
 
     // There are 64 records in a 4KB block.  How many blocks will this require?
-    uint32_t blocks = (ram_records / 64) + ((ram_records & 63) != 0);
+    // We add 1 at the end to account for the header block we write
+    uint32_t blocks = (ram_records / 64) + ((ram_records & 63) != 0) + 1;
 
     // This is the total amount of required space, in bytes
     uint64_t bytes_required = blocks * 4096;
@@ -320,8 +352,8 @@ void execute()
     // We're done with the input file
     fclose(ifile);
 
-    // Tell calling scripts about the size of our data
-    printf("%u %u\n", ram_records, packet_cycles);
+    // Tell the user what we've done
+    printf("%u packets unpacked from %s\n", packets, fn);
 
     // Tell the OS that all is well
     exit(0);
