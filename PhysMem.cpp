@@ -1,5 +1,5 @@
 //=================================================================================================
-// PciDevice.cpp - Implements a generic class for mapping PCIe devices into user-space
+// PhysMem - A class for mapping physical RAM addresses into userspace
 //=================================================================================================
 #include <unistd.h>
 #include <stdio.h>
@@ -79,34 +79,24 @@ static uint64_t parseKMG(const char delimeter, const char* ptr)
 // Passed: physAddr = The physical address to map into user-space
 //         size     = The size of the region to map, in bytes
 //=================================================================================================
-void PhysMem::map(uint64_t physAddr, size_t size)
+void PhysMem::map(uint64_t physAddr, size_t size, bool use_pmem)
 {
+    const char* filename = (use_pmem) ? "/dev/pmem0" : "/dev/mem";
 
     // These are the memory protection flags we'll use when mapping the device into memory
     const int protection = PROT_READ | PROT_WRITE;
 
     // Unmap any memory we may already have mapped
     unmap();
-    
-    // Open the /dev/pmem0 device
-    const char* filename = "/dev/pmem0";
-    int fd = ::open(filename, O_RDWR| O_SYNC);
 
-    // If that fails, try opening '/dev/mem'
-    if (fd < 0)
-    {
-        filename = "/dev/mem";
-        fd = ::open(filename, O_RDWR| O_SYNC);
-    }
+    // Open the memory device
+    int fd = ::open(filename, O_RDWR| O_SYNC);
 
     // If that open failed, we're done here
     if (fd < 0) throwRuntime("Can't open %s", filename);
 
-    // The flags for mmap
-    int flags = MAP_SHARED | MAP_POPULATE;
-
     // Map the memory
-    void* ptr = mmap(0, size, protection, flags, fd, physAddr);
+    void* ptr = mmap(0, size, protection, MAP_SHARED, fd, physAddr);
     
     // We're done with /dev/mem
     ::close(fd);
