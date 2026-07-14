@@ -31,7 +31,6 @@ struct
 {
     uint64_t    size     = 0x100000000;
     uint64_t    addr     = 0x100000000;
-    uint64_t    pmem     = 0;
     string      filename = "";
 } config;
 
@@ -68,7 +67,7 @@ int main(int argc, const char** argv)
 void showHelp()
 {
     printf("unpack_pcap v%s\n", SOFTWARE_REV);
-    printf("unpack_pcap [-addr <n>] [-size <n>] [-pmem <n>] <filename>\n");
+    printf("unpack_pcap [-addr <n>] [-size <n>] <filename>\n");
     exit(1);
 }
 //=============================================================================
@@ -87,16 +86,6 @@ void parseCommandLine(const char** argv)
     {
         // Fetch the next token from the command line
         string token = argv[i++];
-
-        if (token == "-pmem")
-        {
-            ptr = argv[i++];
-            if (ptr == nullptr) showHelp();
-            config.pmem = strtoul(ptr, 0, 0);
-            if (config.pmem < 0x100000000) showHelp();
-            continue;
-        }
-
 
         if (token == "-size")
         {
@@ -301,13 +290,6 @@ void write_packets_to_ram(unsigned char* ptr)
 //=============================================================================
 void execute()
 {
-    // If we're accessing /dev/pmem0 instead of /dev/mem, we need
-    // to offset the address 
-    if (config.pmem)
-    {
-        config.addr = config.addr - config.pmem;        
-    }
-
     // Get a string pointer to the filename
     const char* fn = config.filename.c_str();
 
@@ -362,7 +344,7 @@ void execute()
     }
 
     // Map RAM
-    RAM.map(config.addr, bytes_required, (config.pmem > 0));
+    RAM.map(config.addr, bytes_required);
 
     // Write the packets to RAM
     write_packets_to_ram(RAM.bptr());

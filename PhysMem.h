@@ -20,7 +20,7 @@ public:
     ~PhysMem() {unmap();}
 
     // Call this to map a region of physical address space into user-space
-    void    map(uint64_t physAddr, size_t size, bool use_pmem = false);
+    void    map(uint64_t physAddr, size_t size);
 
     // Automatically maps the region define with "memmap=" in /proc/cmdline
     void    map();
