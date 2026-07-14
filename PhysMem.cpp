@@ -81,7 +81,6 @@ static uint64_t parseKMG(const char delimeter, const char* ptr)
 //=================================================================================================
 void PhysMem::map(uint64_t physAddr, size_t size)
 {
-    const char* filename = "/dev/mem";
 
     // These are the memory protection flags we'll use when mapping the device into memory
     const int protection = PROT_READ | PROT_WRITE;
@@ -89,8 +88,17 @@ void PhysMem::map(uint64_t physAddr, size_t size)
     // Unmap any memory we may already have mapped
     unmap();
 
-    // Open the /dev/mem device
+    const char* filename = "/dev/pmem0";
+
+    // Open the /dev/pmem0 device
     int fd = ::open(filename, O_RDWR| O_SYNC);
+
+    // If that fails, try opening '/dev/mem'
+    if (fd < 0)
+    {
+        filename = "/dev/mem";
+        fd = ::open(filename, O_RDWR| O_SYNC);
+    }
 
     // If that open failed, we're done here
     if (fd < 0) throwRuntime("Can't open %s", filename);
