@@ -87,10 +87,9 @@ void PhysMem::map(uint64_t physAddr, size_t size)
 
     // Unmap any memory we may already have mapped
     unmap();
-
-    const char* filename = "/dev/pmem0";
-
+    
     // Open the /dev/pmem0 device
+    const char* filename = "/dev/pmem0";
     int fd = ::open(filename, O_RDWR| O_SYNC);
 
     // If that fails, try opening '/dev/mem'
