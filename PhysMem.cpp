@@ -95,8 +95,11 @@ void PhysMem::map(uint64_t physAddr, size_t size)
     // If that open failed, we're done here
     if (fd < 0) throwRuntime("Can't open %s", filename);
 
+    // The flags for mmap
+    int flags = MAP_SHARED | MAP_POPULATE;
+
     // Map the memory
-    void* ptr = mmap(0, size, protection, MAP_SHARED, fd, physAddr);
+    void* ptr = mmap(0, size, protection, flags, fd, physAddr);
     
     // We're done with /dev/mem
     ::close(fd);
